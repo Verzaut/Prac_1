@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type RegistrationType = "engineer" | "manager" | "leader" | "customer" | null;
 type ViewMode = "login" | "registration-select" | "registration-form";
 
 export default function Home() {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<ViewMode>("login");
   const [selectedType, setSelectedType] = useState<RegistrationType>(null);
   const [loginData, setLoginData] = useState({
@@ -95,13 +97,20 @@ export default function Home() {
         return;
       }
 
+      // Сохраняем данные пользователя в localStorage
+      localStorage.setItem("user", JSON.stringify(data.user));
+      
       setSuccess(`Добро пожаловать, ${data.user.email}!`);
-      // Здесь можно сохранить данные пользователя в состояние или localStorage
-      // и перенаправить на другую страницу
+      
+      // Перенаправляем на соответствующую страницу в зависимости от типа пользователя
       setTimeout(() => {
-        setLoginData({ email: "", password: "" });
-        setSuccess(null);
-      }, 2000);
+        if (data.user.userType === "customer") {
+          router.push("/customer");
+        } else {
+          // Для других типов пользователей можно создать отдельные страницы
+          router.push("/dashboard");
+        }
+      }, 1000);
     } catch (err) {
       setError('Произошла ошибка при подключении к серверу');
     } finally {
@@ -136,13 +145,51 @@ export default function Home() {
         return;
       }
 
-      setSuccess('Регистрация успешно завершена! Теперь вы можете войти в аккаунт.');
-      setTimeout(() => {
-        setRegistrationData({ email: "", password: "", company: "" });
-        setSelectedType(null);
-        setViewMode("login");
-        setSuccess(null);
-      }, 2000);
+      setSuccess('Регистрация успешно завершена! Выполняется вход...');
+      
+      // Автоматически входим после регистрации
+      setTimeout(async () => {
+        try {
+          const loginResponse = await fetch('/api/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: registrationData.email,
+              password: registrationData.password,
+            }),
+          });
+
+          const loginData = await loginResponse.json();
+
+          if (loginResponse.ok) {
+            // Сохраняем данные пользователя в localStorage
+            localStorage.setItem("user", JSON.stringify(loginData.user));
+            
+            // Перенаправляем на соответствующую страницу
+            if (loginData.user.userType === "customer") {
+              router.push("/customer");
+            } else {
+              router.push("/dashboard");
+            }
+          } else {
+            // Если автоматический вход не удался, переходим на страницу входа
+            setRegistrationData({ email: "", password: "", company: "" });
+            setSelectedType(null);
+            setViewMode("login");
+            setSuccess(null);
+            setError("Регистрация успешна, но автоматический вход не удался. Пожалуйста, войдите вручную.");
+          }
+        } catch (err) {
+          // Если автоматический вход не удался, переходим на страницу входа
+          setRegistrationData({ email: "", password: "", company: "" });
+          setSelectedType(null);
+          setViewMode("login");
+          setSuccess(null);
+          setError("Регистрация успешна, но автоматический вход не удался. Пожалуйста, войдите вручную.");
+        }
+      }, 1500);
     } catch (err) {
       setError('Произошла ошибка при подключении к серверу');
     } finally {
