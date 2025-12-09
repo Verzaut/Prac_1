@@ -32,10 +32,25 @@ db.exec(`
     company TEXT NOT NULL,
     problem TEXT NOT NULL,
     status TEXT DEFAULT 'pending',
+    paid INTEGER DEFAULT 0,
+    is_valid INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id)
   )
 `);
+
+// Обновляем существующую таблицу, если она уже есть (добавляем новые поля)
+try {
+  db.exec(`ALTER TABLE customer_requests ADD COLUMN paid INTEGER DEFAULT 0`);
+} catch (e) {
+  // Поле уже существует, игнорируем ошибку
+}
+
+try {
+  db.exec(`ALTER TABLE customer_requests ADD COLUMN is_valid INTEGER DEFAULT 1`);
+} catch (e) {
+  // Поле уже существует, игнорируем ошибку
+}
 
 export default db;
 
