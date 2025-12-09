@@ -7,6 +7,7 @@ interface Request {
   id: number;
   problem: string;
   status: string;
+  engineer_id: number | null;
   created_at: string;
   customer_email: string;
 }
@@ -26,7 +27,9 @@ export default function EngineerPage() {
   const [requests, setRequests] = useState<GroupedRequests>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [totalRequests, setTotalRequests] = useState(0);
+  const [takingRequestId, setTakingRequestId] = useState<number | null>(null);
 
   useEffect(() => {
     // Получаем данные пользователя из localStorage
@@ -68,6 +71,45 @@ export default function EngineerPage() {
       setError("Произошла ошибка при подключении к серверу");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTakeRequest = async (requestId: number) => {
+    if (!user?.id) return;
+
+    setTakingRequestId(requestId);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch("/api/engineer/take-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestId,
+          engineerId: user.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Ошибка при взятии заявки");
+        return;
+      }
+
+      setSuccess("Заявка успешно взята в работу!");
+      // Перезагружаем заявки
+      await loadRequests();
+      setTimeout(() => {
+        setSuccess(null);
+      }, 3000);
+    } catch (err) {
+      setError("Произошла ошибка при подключении к серверу");
+    } finally {
+      setTakingRequestId(null);
     }
   };
 
@@ -149,10 +191,15 @@ export default function EngineerPage() {
             </div>
           </div>
 
-          {/* Error message */}
+          {/* Messages */}
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-6">
               {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg mb-6">
+              {success}
             </div>
           )}
 
@@ -210,6 +257,31 @@ export default function EngineerPage() {
                             {request.problem}
                           </p>
                         </div>
+                        {request.status === "pending" && !request.engineer_id && (
+                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <button
+                              onClick={() => handleTakeRequest(request.id)}
+                              disabled={takingRequestId === request.id || isLoading}
+                              className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {takingRequestId === request.id ? "Обработка..." : "Взять заказ"}
+                            </button>
+                          </div>
+                        )}
+                        {request.engineer_id === user.id && (
+                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <span className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                              ✓ Вы взяли этот заказ
+                            </span>
+                          </div>
+                        )}
+                        {request.engineer_id && request.engineer_id !== user.id && (
+                          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              Заказ уже взят другим инженером
+                            </span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

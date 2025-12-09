@@ -110,6 +110,8 @@ export default function Home() {
           router.push("/engineer");
         } else if (data.user.userType === "manager") {
           router.push("/manager");
+        } else if (data.user.userType === "leader") {
+          router.push("/leader");
         } else {
           // Для других типов пользователей можно создать отдельные страницы
           router.push("/dashboard");
@@ -178,6 +180,8 @@ export default function Home() {
               router.push("/engineer");
             } else if (loginData.user.userType === "manager") {
               router.push("/manager");
+            } else if (loginData.user.userType === "leader") {
+              router.push("/leader");
             } else {
               router.push("/dashboard");
             }

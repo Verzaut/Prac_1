@@ -34,8 +34,12 @@ db.exec(`
     status TEXT DEFAULT 'pending',
     paid INTEGER DEFAULT 0,
     is_valid INTEGER DEFAULT 1,
+    engineer_id INTEGER,
+    price DECIMAL(10, 2) DEFAULT 0,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    completed_at DATETIME,
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (engineer_id) REFERENCES users(id)
   )
 `);
 
@@ -48,6 +52,24 @@ try {
 
 try {
   db.exec(`ALTER TABLE customer_requests ADD COLUMN is_valid INTEGER DEFAULT 1`);
+} catch (e) {
+  // Поле уже существует, игнорируем ошибку
+}
+
+try {
+  db.exec(`ALTER TABLE customer_requests ADD COLUMN engineer_id INTEGER`);
+} catch (e) {
+  // Поле уже существует, игнорируем ошибку
+}
+
+try {
+  db.exec(`ALTER TABLE customer_requests ADD COLUMN price DECIMAL(10, 2) DEFAULT 0`);
+} catch (e) {
+  // Поле уже существует, игнорируем ошибку
+}
+
+try {
+  db.exec(`ALTER TABLE customer_requests ADD COLUMN completed_at DATETIME`);
 } catch (e) {
   // Поле уже существует, игнорируем ошибку
 }
