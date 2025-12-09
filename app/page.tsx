@@ -106,6 +106,8 @@ export default function Home() {
       setTimeout(() => {
         if (data.user.userType === "customer") {
           router.push("/customer");
+        } else if (data.user.userType === "engineer") {
+          router.push("/engineer");
         } else {
           // Для других типов пользователей можно создать отдельные страницы
           router.push("/dashboard");
@@ -170,6 +172,8 @@ export default function Home() {
             // Перенаправляем на соответствующую страницу
             if (loginData.user.userType === "customer") {
               router.push("/customer");
+            } else if (loginData.user.userType === "engineer") {
+              router.push("/engineer");
             } else {
               router.push("/dashboard");
             }
