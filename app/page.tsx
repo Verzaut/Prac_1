@@ -3,19 +3,23 @@
 import { useState } from "react";
 
 type RegistrationType = "engineer" | "manager" | "leader" | "customer" | null;
+type ViewMode = "login" | "registration-select" | "registration-form";
 
 export default function Home() {
+  const [viewMode, setViewMode] = useState<ViewMode>("login");
   const [selectedType, setSelectedType] = useState<RegistrationType>(null);
-  const [formData, setFormData] = useState({
-    name: "",
+  const [loginData, setLoginData] = useState({
     email: "",
     password: "",
-    confirmPassword: "",
-    phone: "",
-    company: "",
-    position: "",
-    experience: "",
   });
+  const [registrationData, setRegistrationData] = useState({
+    email: "",
+    password: "",
+    company: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const registrationTypes = [
     {
@@ -52,63 +56,106 @@ export default function Home() {
     },
   ];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
+  const handleLoginInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLoginData({
+      ...loginData,
       [e.target.name]: e.target.value,
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Здесь будет логика отправки формы
-    alert(`Регистрация ${registrationTypes.find(t => t.id === selectedType)?.title} завершена!`);
+  const handleRegistrationInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRegistrationData({
+      ...registrationData,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  const getFormFields = () => {
-    const baseFields = [
-      { name: "name", label: "ФИО", type: "text", required: true },
-      { name: "email", label: "Email", type: "email", required: true },
-      { name: "password", label: "Пароль", type: "password", required: true },
-      { name: "confirmPassword", label: "Подтвердите пароль", type: "password", required: true },
-      { name: "phone", label: "Телефон", type: "tel", required: true },
-    ];
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
 
-    switch (selectedType) {
-      case "engineer":
-        return [
-          ...baseFields,
-          { name: "company", label: "Компания", type: "text", required: true },
-          { name: "position", label: "Должность", type: "text", required: true },
-          { name: "experience", label: "Опыт работы (лет)", type: "number", required: true },
-        ];
-      case "manager":
-        return [
-          ...baseFields,
-          { name: "company", label: "Компания", type: "text", required: true },
-          { name: "position", label: "Должность", type: "text", required: true },
-        ];
-      case "leader":
-        return [
-          ...baseFields,
-          { name: "company", label: "Компания", type: "text", required: true },
-          { name: "position", label: "Должность", type: "text", required: true },
-        ];
-      case "customer":
-        return [
-          ...baseFields,
-          { name: "company", label: "Название компании", type: "text", required: true },
-        ];
-      default:
-        return [];
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: loginData.email,
+          password: loginData.password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Ошибка при входе');
+        return;
+      }
+
+      setSuccess(`Добро пожаловать, ${data.user.email}!`);
+      // Здесь можно сохранить данные пользователя в состояние или localStorage
+      // и перенаправить на другую страницу
+      setTimeout(() => {
+        setLoginData({ email: "", password: "" });
+        setSuccess(null);
+      }, 2000);
+    } catch (err) {
+      setError('Произошла ошибка при подключении к серверу');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (selectedType) {
+  const handleRegistrationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: registrationData.email,
+          password: registrationData.password,
+          company: registrationData.company,
+          userType: selectedType,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Ошибка при регистрации');
+        return;
+      }
+
+      setSuccess('Регистрация успешно завершена! Теперь вы можете войти в аккаунт.');
+      setTimeout(() => {
+        setRegistrationData({ email: "", password: "", company: "" });
+        setSelectedType(null);
+        setViewMode("login");
+        setSuccess(null);
+      }, 2000);
+    } catch (err) {
+      setError('Произошла ошибка при подключении к серверу');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Форма регистрации (только email и пароль)
+  if (viewMode === "registration-form" && selectedType) {
     const selectedRegistration = registrationTypes.find(t => t.id === selectedType);
-    return (
+  return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-md mx-auto">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -125,16 +172,10 @@ export default function Home() {
               <button
                 onClick={() => {
                   setSelectedType(null);
-                  setFormData({
-                    name: "",
-                    email: "",
-                    password: "",
-                    confirmPassword: "",
-                    phone: "",
-                    company: "",
-                    position: "",
-                    experience: "",
-                  });
+                  setViewMode("registration-select");
+                  setRegistrationData({ email: "", password: "", company: "" });
+                  setError(null);
+                  setSuccess(null);
                 }}
                 className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
               >
@@ -144,53 +185,101 @@ export default function Home() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {getFormFields().map((field) => (
-                <div key={field.name}>
-                  <label
-                    htmlFor={field.name}
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    {field.label}
-                    {field.required && <span className="text-red-500 ml-1">*</span>}
-                  </label>
-                  <input
-                    type={field.type}
-                    id={field.name}
-                    name={field.name}
-                    value={formData[field.name as keyof typeof formData]}
-                    onChange={handleInputChange}
-                    required={field.required}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all"
-                  />
+            <form onSubmit={handleRegistrationSubmit} className="space-y-6">
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
+                  {error}
                 </div>
-              ))}
+              )}
+              {success && (
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg">
+                  {success}
+                </div>
+              )}
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Email
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={registrationData.email}
+                  onChange={handleRegistrationInputChange}
+                  required
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="example@email.com"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="password"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Пароль
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={registrationData.password}
+                  onChange={handleRegistrationInputChange}
+                  required
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="Введите пароль"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="company"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                >
+                  Компания
+                  <span className="text-red-500 ml-1">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="company"
+                  name="company"
+                  value={registrationData.company}
+                  onChange={handleRegistrationInputChange}
+                  required
+                  disabled={isLoading}
+                  className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  placeholder="Название компании"
+                />
+              </div>
 
               <div className="flex gap-4 pt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setSelectedType(null);
-                    setFormData({
-                      name: "",
-                      email: "",
-                      password: "",
-                      confirmPassword: "",
-                      phone: "",
-                      company: "",
-                      position: "",
-                      experience: "",
-                    });
+                    setViewMode("registration-select");
+                    setRegistrationData({ email: "", password: "", company: "" });
+                    setError(null);
+                    setSuccess(null);
                   }}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  disabled={isLoading}
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
-                  className={`flex-1 px-6 py-3 ${selectedRegistration?.color} text-white rounded-lg font-medium ${selectedRegistration?.hoverColor} transition-colors shadow-lg`}
+                  disabled={isLoading}
+                  className={`flex-1 px-6 py-3 ${selectedRegistration?.color} text-white rounded-lg font-medium ${selectedRegistration?.hoverColor} transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  Зарегистрироваться
+                  {isLoading ? 'Регистрация...' : 'Зарегистрироваться'}
                 </button>
               </div>
             </form>
@@ -200,53 +289,171 @@ export default function Home() {
     );
   }
 
+  // Выбор типа регистрации
+  if (viewMode === "registration-select") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Регистрация
+          </h1>
+            <p className="text-lg text-gray-600 dark:text-gray-400">
+              Выберите тип регистрации, который подходит вам
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {registrationTypes.map((type) => (
+              <button
+                key={type.id}
+                onClick={() => {
+                  setSelectedType(type.id);
+                  setViewMode("registration-form");
+                  setError(null);
+                  setSuccess(null);
+                }}
+                className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-left group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className={`${type.color} text-white rounded-lg p-4 text-3xl group-hover:scale-110 transition-transform`}>
+                    {type.icon}
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                      {type.title}
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {type.description}
+                    </p>
+                  </div>
+                  <svg
+                    className="w-6 h-6 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <div className="text-center mt-8">
+            <button
+              onClick={() => {
+                setViewMode("login");
+                setSelectedType(null);
+                setError(null);
+                setSuccess(null);
+              }}
+              className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+            >
+              ← Вернуться к входу
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Форма входа (по умолчанию)
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Регистрация
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400">
-            Выберите тип регистрации, который подходит вам
-          </p>
-        </div>
+      <div className="max-w-md mx-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Вход в аккаунт
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Войдите в свой аккаунт
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {registrationTypes.map((type) => (
-            <button
-              key={type.id}
-              onClick={() => setSelectedType(type.id)}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-left group"
-            >
-              <div className="flex items-start gap-4">
-                <div className={`${type.color} text-white rounded-lg p-4 text-3xl group-hover:scale-110 transition-transform`}>
-                  {type.icon}
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                    {type.title}
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {type.description}
-                  </p>
-                </div>
-                <svg
-                  className="w-6 h-6 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
+          <form onSubmit={handleLoginSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg">
+                {error}
               </div>
+            )}
+            {success && (
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg">
+                {success}
+              </div>
+            )}
+            <div>
+              <label
+                htmlFor="login-email"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Email
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <input
+                type="email"
+                id="login-email"
+                name="email"
+                value={loginData.email}
+                onChange={handleLoginInputChange}
+                required
+                disabled={isLoading}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="example@email.com"
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="login-password"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Пароль
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <input
+                type="password"
+                id="login-password"
+                name="password"
+                value={loginData.password}
+                onChange={handleLoginInputChange}
+                required
+                disabled={isLoading}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="Введите пароль"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Вход...' : 'Войти'}
             </button>
-          ))}
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-600 dark:text-gray-400">
+              Нет аккаунта?{" "}
+              <button
+                onClick={() => {
+                  setViewMode("registration-select");
+                  setError(null);
+                  setSuccess(null);
+                }}
+                className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              >
+                Зарегистрироваться
+              </button>
+            </p>
+          </div>
         </div>
       </div>
     </div>
